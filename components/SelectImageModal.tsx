@@ -1,11 +1,5 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Button,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Button } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
 type SelectImageModalProps = {
@@ -84,7 +78,7 @@ export default function SelectImageModal({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => requestPermission()}
+            onPress={() => closeModal()}
           >
             <Text style={styles.text}>Avbryt</Text>
           </TouchableOpacity>

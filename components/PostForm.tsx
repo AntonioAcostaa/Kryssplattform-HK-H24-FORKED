@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, Text, View, Image, Modal, ScrollView } from 'react-native';
 import { EvilIcons } from '@expo/vector-icons';
 import SelectImageModal from './SelectImageModal';
+
 import * as Location from 'expo-location';
+import * as postApi from '@/api/postApi';
 
 type PostFormProps = {
-    addNewPost: (post: PostData) => void;
+    addNewPost: () => void;
     closeModal: () => void;
 };
 
@@ -17,16 +19,16 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
     const [image, setImage] = useState<string | null>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-    //Locaiton
     const [statusText, setStatusText] = useState<string | null>(null);
     const [location, setLocation] = useState<Location.LocationGeocodedAddress | null>(null);
+
     const postCoordinatesData = useRef<Location.LocationObjectCoords | null>(null);
 
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                setStatusText('Permission to access location was denied');
+                setStatusText('Tillatelse til å bruke lokasjon ble ikke gitt');
                 return;
             }
         })();
@@ -35,21 +37,20 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
     const getLocation = async () => {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-            setStatusText('Permission to access location was denied');
+            setStatusText('Tillatelse til å bruke lokasjon ble ikke gitt');
             return;
         }
-        let location = await Location.getCurrentPositionAsync({});
+
+        let location = await Location.getCurrentPositionAsync();
         postCoordinatesData.current = location.coords;
-        const locationAddess = await Location.reverseGeocodeAsync({
+        const locationAddress = await Location.reverseGeocodeAsync({
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
         });
-        if (location) {
-            setLocation(locationAddess[0]);
-        }
-    }
+        setLocation(locationAddress[0]);
+    };
 
-    let text = 'Dette blir en kul geolokasjon wow';
+    let text = 'Dette blir en kul geolokasjon wow!';
     if (statusText) {
         text = statusText;
     } else if (location) {
@@ -61,12 +62,13 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
             <ScrollView keyboardDismissMode='interactive' automaticallyAdjustKeyboardInsets>
                 <View style={styles.contentContainer}>
                     <Modal visible={isCameraOpen} animationType='slide'>
-                        <SelectImageModal 
-                        closeModal={() => {
-                            setIsCameraOpen(false);
-                            getLocation();
-                            }} 
-                            setImage={setImage} />
+                        <SelectImageModal
+                            closeModal={() => {
+                                setIsCameraOpen(false);
+                                getLocation();
+                            }}
+                            setImage={setImage}
+                        />
                     </Modal>
                     <Pressable onPress={() => setIsCameraOpen(true)} style={styles.addImageBox}>
                         {image ? (
@@ -98,8 +100,8 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
                     <View style={styles.buttonContainer}>
                         <Pressable
                             style={styles.primaryButton}
-                            onPress={() => {
-                                addNewPost({
+                            onPress={async () => {
+                                const newPost: PostData = {
                                     title: titleText,
                                     description: descriptionText,
                                     // midler for å generere en ikke fullt så unik id, hvis to poster har samme tittel vil det dukke opp en warning om children with the same key
@@ -110,7 +112,9 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
                                     isLiked: false,
                                     imageURL: image || '',
                                     postCoordinates: postCoordinatesData.current,
-                                });
+                                };
+                                await postApi.createPost(newPost);
+                                addNewPost();
                                 setTitleText('');
                                 setDescriptionText('');
                                 setHashtagText('');
